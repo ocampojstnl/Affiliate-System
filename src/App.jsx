@@ -7,7 +7,7 @@ import { Label } from './components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './components/ui/select'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './components/ui/table'
 import { Toast, ToastTitle, ToastDescription, ToastClose } from './components/ui/toast'
-import { Users, DollarSign, RefreshCw, CheckCircle } from 'lucide-react'
+import { Users, DollarSign, RefreshCw, CheckCircle, UserCheck } from 'lucide-react'
 
 const GHL_WEBHOOK_URL = import.meta.env.VITE_GHL_WEBHOOK_URL
 
@@ -99,6 +99,22 @@ function App() {
       fetchClients()
     }
     setSubmitting(false)
+  }
+
+  // Mark client as hired
+  async function handleMarkHired(client) {
+    const { error } = await supabase
+      .from('clients')
+      .update({ is_hired: true })
+      .eq('id', client.id)
+
+    if (error) {
+      showToast('Error', 'Failed to mark as hired: ' + error.message)
+      return
+    }
+
+    showToast('Client Hired', `${client.name} has been marked as hired.`)
+    fetchClients()
   }
 
   // Trigger payout
@@ -240,14 +256,15 @@ function App() {
                   <TableHead>VA</TableHead>
                   <TableHead>Hire Type</TableHead>
                   <TableHead>Affiliate ID</TableHead>
+                  <TableHead>Hired</TableHead>
                   <TableHead>Payout Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {clients.length === 0 && !loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No clients registered yet.
                     </TableCell>
                   </TableRow>
@@ -268,32 +285,53 @@ function App() {
                         )}
                       </TableCell>
                       <TableCell>
+                        {client.is_hired ? (
+                          <span className="inline-flex items-center gap-1 text-green-600 text-sm font-medium">
+                            <UserCheck className="h-4 w-4" /> Hired
+                          </span>
+                        ) : (
+                          <span className="text-yellow-600 text-sm font-medium">Not Hired</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         {client.affiliate_id ? (
                           client.is_paid ? (
                             <span className="inline-flex items-center gap-1 text-green-600 text-sm font-medium">
                               <CheckCircle className="h-4 w-4" /> Paid
                             </span>
+                          ) : client.is_hired ? (
+                            <span className="text-blue-600 text-sm font-medium">Ready for Payout</span>
                           ) : (
-                            <span className="text-yellow-600 text-sm font-medium">Pending</span>
+                            <span className="text-muted-foreground text-sm">Awaiting Hire</span>
                           )
                         ) : (
                           <span className="text-muted-foreground text-sm">N/A</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {client.affiliate_id ? (
-                          <Button
-                            size="sm"
-                            variant={client.is_paid ? 'outline' : 'default'}
-                            disabled={client.is_paid}
-                            onClick={() => handleTriggerPayout(client)}
-                          >
-                            <DollarSign className="h-4 w-4" />
-                            {client.is_paid ? 'Paid' : 'Trigger Payout'}
-                          </Button>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {!client.is_hired && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleMarkHired(client)}
+                            >
+                              <UserCheck className="h-4 w-4" />
+                              Mark Hired
+                            </Button>
+                          )}
+                          {client.affiliate_id && client.is_hired && (
+                            <Button
+                              size="sm"
+                              variant={client.is_paid ? 'outline' : 'default'}
+                              disabled={client.is_paid}
+                              onClick={() => handleTriggerPayout(client)}
+                            >
+                              <DollarSign className="h-4 w-4" />
+                              {client.is_paid ? 'Paid' : 'Trigger Payout'}
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
