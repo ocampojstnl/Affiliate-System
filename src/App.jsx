@@ -7,11 +7,14 @@ import { Label } from './components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './components/ui/select'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './components/ui/table'
 import { Toast, ToastTitle, ToastDescription, ToastClose } from './components/ui/toast'
-import { Users, DollarSign, RefreshCw, CheckCircle, UserCheck } from 'lucide-react'
+import { Users, DollarSign, RefreshCw, CheckCircle, UserCheck, Info, ArrowLeft } from 'lucide-react'
 
 const GHL_WEBHOOK_URL = import.meta.env.VITE_GHL_WEBHOOK_URL
 
 function App() {
+  // Page navigation
+  const [page, setPage] = useState('dashboard')
+
   // Affiliate detection
   const [affiliateId, setAffiliateId] = useState('')
 
@@ -113,7 +116,7 @@ function App() {
       return
     }
 
-    showToast('Client Hired', `${client.name} has been marked as hired.`)
+    showToast('VA Hired', `${client.name} hired a VA. Affiliate payout is now eligible.`)
     fetchClients()
   }
 
@@ -155,21 +158,98 @@ function App() {
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
       <div className="mx-auto max-w-6xl space-y-8">
         {/* Header */}
-        <div className="flex items-center gap-3">
-          <Users className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">VA Recruitment Testing Tool</h1>
-            <p className="text-sm text-muted-foreground">
-              Track affiliate referrals and manage GHL payouts
-              {affiliateId && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                  Affiliate: {affiliateId}
-                </span>
-              )}
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Users className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">VA Recruitment Testing Tool</h1>
+              <p className="text-sm text-muted-foreground">
+                Track affiliate referrals and manage GHL payouts
+                {affiliateId && (
+                  <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                    Affiliate: {affiliateId}
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(page === 'dashboard' ? 'how-it-works' : 'dashboard')}
+          >
+            {page === 'dashboard' ? (
+              <><Info className="h-4 w-4" /> How It Works</>
+            ) : (
+              <><ArrowLeft className="h-4 w-4" /> Back to Dashboard</>
+            )}
+          </Button>
         </div>
 
+        {page === 'how-it-works' ? (
+          <>
+            {/* How It Works Page */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">How It Works</CardTitle>
+                <CardDescription>A complete overview of the VA Recruitment & Affiliate Payout system.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="font-semibold text-base mb-2">1. Affiliate Referral Link</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Affiliates share a unique referral link containing their ID, e.g.
+                    <code className="mx-1 rounded bg-muted px-1.5 py-0.5 text-xs font-mono">yoursite.com?am_id=90899</code>.
+                    When a client visits the site through this link, the affiliate ID is automatically captured and stored.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-base mb-2">2. Client Registration</h3>
+                  <p className="text-sm text-muted-foreground">
+                    The client fills out the registration form with their name, email, selects a VA (VA Alpha, VA Beta, or VA Gamma),
+                    and picks a hire type (Part-Time or Full-Time). The form submission saves their data to the database along with
+                    the affiliate ID (if they came via a referral link).
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-base mb-2">3. Admin Confirms VA Hire</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Once a client has actually hired a VA, an admin clicks the <strong>"Confirm VA Hired"</strong> button on the
+                    client's row in the dashboard. This marks the client as having completed a hire, which makes the referring
+                    affiliate eligible for their payout.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-base mb-2">4. Trigger Affiliate Payout</h3>
+                  <p className="text-sm text-muted-foreground">
+                    After a VA hire is confirmed, the <strong>"Trigger Payout"</strong> button becomes available. Clicking it
+                    sends a webhook to GoHighLevel (GHL) with the client's email and the payout amount:
+                  </p>
+                  <ul className="mt-2 list-disc list-inside text-sm text-muted-foreground space-y-1">
+                    <li><strong>Part-Time hire</strong> = $150 affiliate payout</li>
+                    <li><strong>Full-Time hire</strong> = $300 affiliate payout</li>
+                  </ul>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    The payout data is sent to GHL, where it appears under the affiliate's "Commissions" in the GHL Affiliate Portal.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-base mb-2">5. Status Tracking</h3>
+                  <p className="text-sm text-muted-foreground">Each client row shows two statuses:</p>
+                  <ul className="mt-2 list-disc list-inside text-sm text-muted-foreground space-y-1">
+                    <li><strong>VA Hire Status</strong> — "Pending Hire" or "VA Hired"</li>
+                    <li><strong>Payout Status</strong> — "Awaiting Hire", "Ready for Payout", or "Paid"</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+        <>
         {/* Registration Form */}
         <Card>
           <CardHeader>
@@ -256,7 +336,7 @@ function App() {
                   <TableHead>VA</TableHead>
                   <TableHead>Hire Type</TableHead>
                   <TableHead>Affiliate ID</TableHead>
-                  <TableHead>Hired</TableHead>
+                  <TableHead>VA Hire Status</TableHead>
                   <TableHead>Payout Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -287,10 +367,10 @@ function App() {
                       <TableCell>
                         {client.is_hired ? (
                           <span className="inline-flex items-center gap-1 text-green-600 text-sm font-medium">
-                            <UserCheck className="h-4 w-4" /> Hired
+                            <UserCheck className="h-4 w-4" /> VA Hired
                           </span>
                         ) : (
-                          <span className="text-yellow-600 text-sm font-medium">Not Hired</span>
+                          <span className="text-yellow-600 text-sm font-medium">Pending Hire</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -317,7 +397,7 @@ function App() {
                               onClick={() => handleMarkHired(client)}
                             >
                               <UserCheck className="h-4 w-4" />
-                              Mark Hired
+                              Confirm VA Hired
                             </Button>
                           )}
                           {client.affiliate_id && client.is_hired && (
@@ -340,6 +420,8 @@ function App() {
             </Table>
           </CardContent>
         </Card>
+        </>
+        )}
       </div>
 
       {/* Toast */}
