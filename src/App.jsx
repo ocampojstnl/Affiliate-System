@@ -30,7 +30,7 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   // Toast state
-  const [toast, setToast] = useState({ open: false, title: '', description: '' })
+  const [toast, setToast] = useState({ open: false, title: '', description: '', variant: 'default' })
 
   // Capture affiliate ID from URL on load
   useEffect(() => {
@@ -55,27 +55,28 @@ function App() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      showToast('Error', 'Failed to fetch clients: ' + error.message)
+      showToast('Error', 'Failed to fetch clients: ' + error.message, 'error')
     } else {
       setClients(data || [])
     }
     setLoading(false)
+    return { data, error }
   }, [])
 
   useEffect(() => {
     fetchClients()
   }, [fetchClients])
 
-  function showToast(title, description) {
-    setToast({ open: true, title, description })
-    setTimeout(() => setToast(prev => ({ ...prev, open: false })), 3000)
+  function showToast(title, description, variant = 'default') {
+    setToast({ open: true, title, description, variant })
+    setTimeout(() => setToast(prev => ({ ...prev, open: false })), 4000)
   }
 
   // Handle form submission
   async function handleSubmit(e) {
     e.preventDefault()
     if (!name || !email || !vaName || !hireType) {
-      showToast('Validation Error', 'Please fill in all fields.')
+      showToast('Validation Error', 'Please fill in all fields.', 'warning')
       return
     }
 
@@ -92,9 +93,9 @@ function App() {
     ])
 
     if (error) {
-      showToast('Error', 'Failed to register: ' + error.message)
+      showToast('Error', 'Failed to register: ' + error.message, 'error')
     } else {
-      showToast('Success', 'Client registered successfully!')
+      showToast('Client Registered', `${name} has been registered successfully!`, 'success')
       setName('')
       setEmail('')
       setVaName('')
@@ -112,11 +113,11 @@ function App() {
       .eq('id', client.id)
 
     if (error) {
-      showToast('Error', 'Failed to mark as hired: ' + error.message)
+      showToast('Error', 'Failed to mark as hired: ' + error.message, 'error')
       return
     }
 
-    showToast('VA Hired', `${client.name} hired a VA. Affiliate payout is now eligible.`)
+    showToast('VA Hired', `${client.name} hired a VA. Affiliate payout is now eligible.`, 'success')
     fetchClients()
   }
 
@@ -131,7 +132,7 @@ function App() {
       .eq('id', client.id)
 
     if (error) {
-      showToast('Error', 'Failed to update payout status: ' + error.message)
+      showToast('Error', 'Failed to update payout status: ' + error.message, 'error')
       return
     }
 
@@ -150,7 +151,7 @@ function App() {
       console.warn('GHL Webhook call failed. Make sure GHL_WEBHOOK_URL is set.')
     }
 
-    showToast('Payout Triggered', `$${payoutAmount} payout triggered for ${client.name}`)
+    showToast('Payout Triggered', `$${payoutAmount} payout sent to GHL for ${client.name}'s affiliate.`, 'success')
     fetchClients()
   }
 
@@ -322,7 +323,7 @@ function App() {
               <CardTitle className="text-lg">Client Dashboard</CardTitle>
               <CardDescription>View all registered clients and manage payouts.</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={fetchClients} disabled={loading}>
+            <Button variant="outline" size="sm" onClick={async () => { const res = await fetchClients(); if (!res.error) showToast('Refreshed', 'Client data has been updated.', 'info') }} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
@@ -425,7 +426,7 @@ function App() {
       </div>
 
       {/* Toast */}
-      <Toast open={toast.open} onOpenChange={(open) => setToast(prev => ({ ...prev, open }))}>
+      <Toast open={toast.open} variant={toast.variant} onOpenChange={(open) => setToast(prev => ({ ...prev, open }))}>
         <div className="grid gap-1">
           <ToastTitle>{toast.title}</ToastTitle>
           <ToastDescription>{toast.description}</ToastDescription>
