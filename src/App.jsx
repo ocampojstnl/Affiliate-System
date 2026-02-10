@@ -29,6 +29,9 @@ function App() {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Payout loading state
+  const [payingOutId, setPayingOutId] = useState(null)
+
   // Toast state
   const [toast, setToast] = useState({ open: false, title: '', description: '', variant: 'default' })
 
@@ -43,6 +46,34 @@ function App() {
       // No am_id in URL = direct visit, no affiliate
       setAffiliateId('')
       localStorage.removeItem('am_id')
+    }
+  }, [])
+
+  // Inject GHL affiliate tracking script
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.type = 'text/javascript'
+    script.async = true
+    script.src = 'https://link.esystemsmanagement.com/js/am.js'
+    script.onload = script.onreadystatechange = function () {
+      const state = this.readyState
+      if (!state || state === 'complete' || state === 'loaded') {
+        try {
+          window.affiliateManager.init(
+            'dXPpkZ3hX5PCKayZrLsI',
+            'https://backend.leadconnectorhq.com',
+            '.affiliate-system-utrz.onrender.com'
+          )
+        } catch (e) {
+          console.warn('GHL affiliate script init failed:', e)
+        }
+      }
+    }
+    const firstScript = document.getElementsByTagName('script')[0]
+    firstScript.parentNode.insertBefore(script, firstScript)
+
+    return () => {
+      script.remove()
     }
   }, [])
 
@@ -121,37 +152,48 @@ function App() {
     fetchClients()
   }
 
-  // Trigger payout
+  // Trigger payout — send GHL webhook first, then update Supabase on success
   async function handleTriggerPayout(client) {
     const payoutAmount = client.hire_type === 'Part-Time' ? 150 : 300
+    setPayingOutId(client.id)
 
-    // Update Supabase record
+    // Send GHL Webhook first
+    try {
+      const response = await fetch(GHL_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: client.email,
+          payout_amount: payoutAmount,
+          status: 'success',
+        }),
+      })
+
+      if (!response.ok) {
+        showToast('Webhook Error', `GHL webhook returned status ${response.status}. Payout not recorded.`, 'error')
+        setPayingOutId(null)
+        return
+      }
+    } catch (err) {
+      showToast('Webhook Error', 'Failed to reach GHL webhook. Check your VITE_GHL_WEBHOOK_URL.', 'error')
+      setPayingOutId(null)
+      return
+    }
+
+    // Webhook succeeded — now update Supabase record
     const { error } = await supabase
       .from('clients')
       .update({ is_paid: true })
       .eq('id', client.id)
 
     if (error) {
-      showToast('Error', 'Failed to update payout status: ' + error.message, 'error')
+      showToast('Error', 'GHL webhook sent but failed to update database: ' + error.message, 'error')
+      setPayingOutId(null)
       return
     }
 
-    // Send GHL Webhook
-    try {
-      await fetch(GHL_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: client.email,
-          payout_amount: payoutAmount,
-        }),
-      })
-    } catch {
-      // Webhook may fail if URL not set yet - that's OK
-      console.warn('GHL Webhook call failed. Make sure GHL_WEBHOOK_URL is set.')
-    }
-
     showToast('Payout Triggered', `$${payoutAmount} payout sent to GHL for ${client.name}'s affiliate.`, 'success')
+    setPayingOutId(null)
     fetchClients()
   }
 
@@ -405,11 +447,14 @@ function App() {
                             <Button
                               size="sm"
                               variant={client.is_paid ? 'outline' : 'default'}
-                              disabled={client.is_paid}
+                              disabled={client.is_paid || payingOutId === client.id}
                               onClick={() => handleTriggerPayout(client)}
                             >
-                              <DollarSign className="h-4 w-4" />
-                              {client.is_paid ? 'Paid' : 'Trigger Payout'}
+                              {payingOutId === client.id ? (
+                                <><RefreshCw className="h-4 w-4 animate-spin" /> Sending...</>
+                              ) : (
+                                <><DollarSign className="h-4 w-4" /> {client.is_paid ? 'Paid' : 'Trigger Payout'}</>
+                              )}
                             </Button>
                           )}
                         </div>
