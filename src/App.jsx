@@ -144,7 +144,7 @@ function App() {
 
   // Trigger payout — send GHL webhook first, then update Supabase on success
   async function handleTriggerPayout(client) {
-    const payoutAmount = client.hire_type === 'Part-Time' ? 0 : 0
+    const payoutAmount = client.hire_type === 'Part-Time' ? 150 : 300
     setPayingOutId(client.id)
 
     // Send GHL Webhook first
