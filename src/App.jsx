@@ -9,7 +9,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { Toast, ToastTitle, ToastDescription, ToastClose } from './components/ui/toast'
 import { Users, DollarSign, RefreshCw, CheckCircle, UserCheck, Info, ArrowLeft } from 'lucide-react'
 
-const GHL_WEBHOOK_URL = import.meta.env.VITE_GHL_WEBHOOK_URL
+const GHL_WEBHOOK_URL = '/api/ghl-webhook'
 
 function App() {
   // Page navigation
