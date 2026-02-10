@@ -7,7 +7,7 @@ import { Label } from './components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './components/ui/select'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './components/ui/table'
 import { Toast, ToastTitle, ToastDescription, ToastClose } from './components/ui/toast'
-import { Users, DollarSign, RefreshCw, CheckCircle, UserCheck, Info, ArrowLeft } from 'lucide-react'
+import { Users, DollarSign, RefreshCw, CheckCircle, UserCheck, Info, ArrowLeft, Lock } from 'lucide-react'
 
 const GHL_WEBHOOK_URL = '/api/ghl-webhook'
 
@@ -20,6 +20,23 @@ function getCookie(name) {
 }
 
 function App() {
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('authenticated') === 'true')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+
+  function handleLogin(e) {
+    e.preventDefault()
+    if (username === 'affiliateMaster' && password === 'affiliateMaster1521') {
+      setIsAuthenticated(true)
+      sessionStorage.setItem('authenticated', 'true')
+      setLoginError('')
+    } else {
+      setLoginError('Invalid username or password.')
+    }
+  }
+
   // Page navigation
   const [page, setPage] = useState('dashboard')
 
@@ -199,6 +216,49 @@ function App() {
     showToast('Payout Triggered', `$${payoutAmount} payout sent to GHL for ${client.name}'s affiliate.`, 'success')
     setPayingOutId(null)
     fetchClients()
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-2">
+              <Lock className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-lg">Login Required</CardTitle>
+            <CardDescription>Enter your credentials to access the dashboard.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="login-username">Username</Label>
+                <Input
+                  id="login-username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Username"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="login-password">Password</Label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                />
+              </div>
+              {loginError && (
+                <p className="text-sm text-red-600">{loginError}</p>
+              )}
+              <Button type="submit" className="w-full">Sign In</Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
