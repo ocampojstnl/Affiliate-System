@@ -49,34 +49,6 @@ function App() {
     }
   }, [])
 
-  // Inject GHL affiliate tracking script
-  useEffect(() => {
-    const script = document.createElement('script')
-    script.type = 'text/javascript'
-    script.async = true
-    script.src = 'https://link.esystemsmanagement.com/js/am.js'
-    script.onload = script.onreadystatechange = function () {
-      const state = this.readyState
-      if (!state || state === 'complete' || state === 'loaded') {
-        try {
-          window.affiliateManager.init(
-            'dXPpkZ3hX5PCKayZrLsI',
-            'https://backend.leadconnectorhq.com',
-            '.affiliate-system-utrz.onrender.com'
-          )
-        } catch (e) {
-          console.warn('GHL affiliate script init failed:', e)
-        }
-      }
-    }
-    const firstScript = document.getElementsByTagName('script')[0]
-    firstScript.parentNode.insertBefore(script, firstScript)
-
-    return () => {
-      script.remove()
-    }
-  }, [])
-
   // Fetch clients from Supabase
   const fetchClients = useCallback(async () => {
     setLoading(true)
@@ -126,6 +98,24 @@ function App() {
     if (error) {
       showToast('Error', 'Failed to register: ' + error.message, 'error')
     } else {
+      // Notify GHL of new lead so affiliate gets credit
+      if (affiliateId) {
+        try {
+          await fetch(GHL_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              name,
+              affiliate_id: affiliateId,
+              event: 'new_lead',
+            }),
+          })
+        } catch {
+          // Non-blocking — lead is saved in Supabase regardless
+        }
+      }
+
       showToast('Client Registered', `${name} has been registered successfully!`, 'success')
       setName('')
       setEmail('')
