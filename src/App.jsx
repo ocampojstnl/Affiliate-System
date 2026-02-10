@@ -154,6 +154,8 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: client.email,
+          name: client.name,
+          affiliate_id: client.affiliate_id,
           payout_amount: payoutAmount,
           status: 'success',
         }),
