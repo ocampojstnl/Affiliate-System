@@ -11,6 +11,14 @@ import { Users, DollarSign, RefreshCw, CheckCircle, UserCheck, Info, ArrowLeft }
 
 const GHL_WEBHOOK_URL = '/api/ghl-webhook'
 
+// Read GHL tracking cookies set by am.js
+function getCookie(name) {
+  const value = `; ${document.cookie}`
+  const parts = value.split(`; ${name}=`)
+  if (parts.length === 2) return parts.pop().split(';').shift()
+  return null
+}
+
 function App() {
   // Page navigation
   const [page, setPage] = useState('dashboard')
@@ -108,6 +116,8 @@ function App() {
               email,
               name,
               affiliate_id: affiliateId,
+              am_id: getCookie('am_id'),
+              am_fingerprint: getCookie('am_fingerprint'),
               event: 'new_lead',
             }),
           })
@@ -156,6 +166,8 @@ function App() {
           email: client.email,
           name: client.name,
           affiliate_id: client.affiliate_id,
+          am_id: getCookie('am_id'),
+          am_fingerprint: getCookie('am_fingerprint'),
           payout_amount: payoutAmount,
           status: 'success',
         }),
