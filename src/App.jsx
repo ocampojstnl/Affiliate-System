@@ -37,6 +37,9 @@ function App() {
     }
   }
 
+  // Detect if this is a lead visiting via affiliate link
+  const isLeadVisit = Boolean(new URLSearchParams(window.location.search).get('am_id'))
+
   // Page navigation
   const [page, setPage] = useState('dashboard')
 
@@ -218,6 +221,104 @@ function App() {
     fetchClients()
   }
 
+  // Lead visit: show public registration form (no auth required)
+  if (isLeadVisit && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-muted/30 p-4 md:p-8">
+        <div className="mx-auto max-w-2xl space-y-8">
+          <div className="flex items-center gap-3">
+            <Users className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">VA Recruitment</h1>
+              <p className="text-sm text-muted-foreground">
+                Register for a Virtual Assistant
+                {affiliateId && (
+                  <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                    Affiliate: {affiliateId}
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Register New Client</CardTitle>
+              <CardDescription>Fill out the form to register for a VA.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="John Doe"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>VA Selection</Label>
+                  <Select value={vaName} onValueChange={setVaName}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a VA" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="VA Alpha">VA Alpha</SelectItem>
+                      <SelectItem value="VA Beta">VA Beta</SelectItem>
+                      <SelectItem value="VA Gamma">VA Gamma</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Hire Type</Label>
+                  <Select value={hireType} onValueChange={setHireType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select hire type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Part-Time">Part-Time ($150)</SelectItem>
+                      <SelectItem value="Full-Time">Full-Time ($300)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+                    {submitting ? 'Registering...' : 'Register Client'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Toast */}
+        <Toast open={toast.open} variant={toast.variant} onOpenChange={(open) => setToast(prev => ({ ...prev, open }))}>
+          <div className="grid gap-1">
+            <ToastTitle>{toast.title}</ToastTitle>
+            <ToastDescription>{toast.description}</ToastDescription>
+          </div>
+          <ToastClose />
+        </Toast>
+      </div>
+    )
+  }
+
+  // No affiliate link and not authenticated: show login
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
@@ -261,6 +362,7 @@ function App() {
     )
   }
 
+  // Authenticated: show full admin dashboard
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
       <div className="mx-auto max-w-6xl space-y-8">
