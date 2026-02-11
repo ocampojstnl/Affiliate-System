@@ -135,6 +135,7 @@ function App() {
               affiliate_id: affiliateId,
               am_id: getCookie('am_id'),
               am_fingerprint: getCookie('am_fingerprint'),
+              type: 'sale',
               event: 'new_lead',
             }),
           })
@@ -185,6 +186,7 @@ function App() {
           affiliate_id: client.affiliate_id,
           am_id: getCookie('am_id'),
           am_fingerprint: getCookie('am_fingerprint'),
+          type: 'pay_out',
           payout_amount: payoutAmount,
           status: 'success',
         }),
