@@ -151,7 +151,7 @@ function App() {
     setSubmitting(false)
   }
 
-  // Mark client as hired and notify GHL (converts lead → customer)
+  // Mark client as hired
   async function handleMarkHired(client) {
     const { error } = await supabase
       .from('clients')
@@ -163,28 +163,7 @@ function App() {
       return
     }
 
-    // Notify GHL that the lead is now a customer
-    if (client.affiliate_id) {
-      try {
-        await fetch(GHL_WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: client.email,
-            name: client.name,
-            affiliate_id: client.affiliate_id,
-            am_id: getCookie('am_id'),
-            am_fingerprint: getCookie('am_fingerprint'),
-            type: 'sale',
-            event: 'new_customer',
-          }),
-        })
-      } catch {
-        // Non-blocking — hire is saved in Supabase regardless
-      }
-    }
-
-    showToast('VA Hired', `${client.name} hired a VA. Marked as customer in GHL.`, 'success')
+    showToast('VA Hired', `${client.name} has been marked as VA Hired.`, 'success')
     fetchClients()
   }
 
