@@ -7,7 +7,7 @@ import { Label } from './components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './components/ui/select'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './components/ui/table'
 import { Toast, ToastTitle, ToastDescription, ToastClose } from './components/ui/toast'
-import { Users, DollarSign, RefreshCw, CheckCircle, UserCheck, Info, ArrowLeft, Lock } from 'lucide-react'
+import { Users, RefreshCw, UserCheck, Info, ArrowLeft, Lock } from 'lucide-react'
 
 const GHL_WEBHOOK_URL = '/api/ghl-webhook'
 
@@ -53,9 +53,6 @@ function App() {
   // Table state
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
-
-  // Payout loading state
-  const [payingOutId, setPayingOutId] = useState(null)
 
   // Toast state
   const [toast, setToast] = useState({ open: false, title: '', description: '', variant: 'default' })
@@ -154,7 +151,7 @@ function App() {
     setSubmitting(false)
   }
 
-  // Mark client as hired
+  // Mark client as hired and notify GHL (converts lead → customer)
   async function handleMarkHired(client) {
     const { error } = await supabase
       .from('clients')
@@ -166,57 +163,28 @@ function App() {
       return
     }
 
-    showToast('VA Hired', `${client.name} hired a VA. Affiliate payout is now eligible.`, 'success')
-    fetchClients()
-  }
-
-  // Trigger payout — send GHL webhook first, then update Supabase on success
-  async function handleTriggerPayout(client) {
-    const payoutAmount = client.hire_type === 'Part-Time' ? 150 : 300
-    setPayingOutId(client.id)
-
-    // Send GHL Webhook first
-    try {
-      const response = await fetch(GHL_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: client.email,
-          name: client.name,
-          affiliate_id: client.affiliate_id,
-          am_id: getCookie('am_id'),
-          am_fingerprint: getCookie('am_fingerprint'),
-          type: 'pay_out',
-          payout_amount: payoutAmount,
-          status: 'success',
-        }),
-      })
-
-      if (!response.ok) {
-        showToast('Webhook Error', `GHL webhook returned status ${response.status}. Payout not recorded.`, 'error')
-        setPayingOutId(null)
-        return
+    // Notify GHL that the lead is now a customer
+    if (client.affiliate_id) {
+      try {
+        await fetch(GHL_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: client.email,
+            name: client.name,
+            affiliate_id: client.affiliate_id,
+            am_id: getCookie('am_id'),
+            am_fingerprint: getCookie('am_fingerprint'),
+            type: 'sale',
+            event: 'new_customer',
+          }),
+        })
+      } catch {
+        // Non-blocking — hire is saved in Supabase regardless
       }
-    } catch (err) {
-      showToast('Webhook Error', 'Failed to reach GHL webhook. Check your VITE_GHL_WEBHOOK_URL.', 'error')
-      setPayingOutId(null)
-      return
     }
 
-    // Webhook succeeded — now update Supabase record
-    const { error } = await supabase
-      .from('clients')
-      .update({ is_paid: true })
-      .eq('id', client.id)
-
-    if (error) {
-      showToast('Error', 'GHL webhook sent but failed to update database: ' + error.message, 'error')
-      setPayingOutId(null)
-      return
-    }
-
-    showToast('Payout Triggered', `$${payoutAmount} payout sent to GHL for ${client.name}'s affiliate.`, 'success')
-    setPayingOutId(null)
+    showToast('VA Hired', `${client.name} hired a VA. Marked as customer in GHL.`, 'success')
     fetchClients()
   }
 
@@ -279,7 +247,7 @@ function App() {
             <div>
               <h1 className="text-2xl font-bold tracking-tight">VA Recruitment Testing Tool</h1>
               <p className="text-sm text-muted-foreground">
-                Track affiliate referrals and manage GHL payouts
+                Track affiliate referrals and VA hires
                 {affiliateId && (
                   <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                     Affiliate: {affiliateId}
@@ -307,7 +275,7 @@ function App() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">How It Works</CardTitle>
-                <CardDescription>A complete overview of the VA Recruitment & Affiliate Payout system.</CardDescription>
+                <CardDescription>A complete overview of the VA Recruitment & Affiliate system.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
@@ -320,44 +288,28 @@ function App() {
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-base mb-2">2. Client Registration</h3>
+                  <h3 className="font-semibold text-base mb-2">2. Client Registration (Lead)</h3>
                   <p className="text-sm text-muted-foreground">
                     The client fills out the registration form with their name, email, selects a VA (VA Alpha, VA Beta, or VA Gamma),
                     and picks a hire type (Part-Time or Full-Time). The form submission saves their data to the database along with
-                    the affiliate ID (if they came via a referral link).
+                    the affiliate ID (if they came via a referral link). A <strong>lead</strong> event is sent to GHL so the affiliate gets credit for the referral.
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-base mb-2">3. Admin Confirms VA Hire</h3>
+                  <h3 className="font-semibold text-base mb-2">3. Admin Confirms VA Hire (Customer)</h3>
                   <p className="text-sm text-muted-foreground">
                     Once a client has actually hired a VA, an admin clicks the <strong>"Confirm VA Hired"</strong> button on the
-                    client's row in the dashboard. This marks the client as having completed a hire, which makes the referring
-                    affiliate eligible for their payout.
+                    client's row in the dashboard. This marks the client as having completed a hire and sends a <strong>customer</strong> event
+                    to GHL, converting the affiliate's lead into a customer.
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="font-semibold text-base mb-2">4. Trigger Affiliate Payout</h3>
-                  <p className="text-sm text-muted-foreground">
-                    After a VA hire is confirmed, the <strong>"Trigger Payout"</strong> button becomes available. Clicking it
-                    sends a webhook to GoHighLevel (GHL) with the client's email and the payout amount:
-                  </p>
-                  <ul className="mt-2 list-disc list-inside text-sm text-muted-foreground space-y-1">
-                    <li><strong>Part-Time hire</strong> = $150 affiliate payout</li>
-                    <li><strong>Full-Time hire</strong> = $300 affiliate payout</li>
-                  </ul>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    The payout data is sent to GHL, where it appears under the affiliate's "Commissions" in the GHL Affiliate Portal.
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-base mb-2">5. Status Tracking</h3>
-                  <p className="text-sm text-muted-foreground">Each client row shows two statuses:</p>
+                  <h3 className="font-semibold text-base mb-2">4. Status Tracking</h3>
+                  <p className="text-sm text-muted-foreground">Each client row shows:</p>
                   <ul className="mt-2 list-disc list-inside text-sm text-muted-foreground space-y-1">
                     <li><strong>VA Hire Status</strong> — "Pending Hire" or "VA Hired"</li>
-                    <li><strong>Payout Status</strong> — "Awaiting Hire", "Ready for Payout", or "Paid"</li>
                   </ul>
                 </div>
               </CardContent>
@@ -435,7 +387,7 @@ function App() {
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-lg">Client Dashboard</CardTitle>
-              <CardDescription>View all registered clients and manage payouts.</CardDescription>
+              <CardDescription>View all registered clients and manage VA hires.</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={async () => { const res = await fetchClients(); if (!res.error) showToast('Refreshed', 'Client data has been updated.', 'info') }} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -452,14 +404,13 @@ function App() {
                   <TableHead>Hire Type</TableHead>
                   <TableHead>Affiliate ID</TableHead>
                   <TableHead>VA Hire Status</TableHead>
-                  <TableHead>Payout Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {clients.length === 0 && !loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No clients registered yet.
                     </TableCell>
                   </TableRow>
@@ -488,48 +439,17 @@ function App() {
                           <span className="text-yellow-600 text-sm font-medium">Pending Hire</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        {client.affiliate_id ? (
-                          client.is_paid ? (
-                            <span className="inline-flex items-center gap-1 text-green-600 text-sm font-medium">
-                              <CheckCircle className="h-4 w-4" /> Paid
-                            </span>
-                          ) : client.is_hired ? (
-                            <span className="text-blue-600 text-sm font-medium">Ready for Payout</span>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">Awaiting Hire</span>
-                          )
-                        ) : (
-                          <span className="text-muted-foreground text-sm">N/A</span>
-                        )}
-                      </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {!client.is_hired && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleMarkHired(client)}
-                            >
-                              <UserCheck className="h-4 w-4" />
-                              Confirm VA Hired
-                            </Button>
-                          )}
-                          {client.affiliate_id && client.is_hired && (
-                            <Button
-                              size="sm"
-                              variant={client.is_paid ? 'outline' : 'default'}
-                              disabled={client.is_paid || payingOutId === client.id}
-                              onClick={() => handleTriggerPayout(client)}
-                            >
-                              {payingOutId === client.id ? (
-                                <><RefreshCw className="h-4 w-4 animate-spin" /> Sending...</>
-                              ) : (
-                                <><DollarSign className="h-4 w-4" /> {client.is_paid ? 'Paid' : 'Trigger Payout'}</>
-                              )}
-                            </Button>
-                          )}
-                        </div>
+                        {!client.is_hired && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleMarkHired(client)}
+                          >
+                            <UserCheck className="h-4 w-4" />
+                            Confirm VA Hired
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
