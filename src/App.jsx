@@ -64,6 +64,10 @@ function App() {
     const amFingerprint = params.get('am_fingerprint')
     const maxAge = 60 * 60 * 24 * 30 // 30 days
 
+    // Clear any old duplicate cookies first
+    document.cookie = 'am_id=; path=/; max-age=0'
+    document.cookie = 'am_fingerprint=; path=/; max-age=0'
+
     if (amId) {
       setAffiliateId(amId)
       localStorage.setItem('am_id', amId)
