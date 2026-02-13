@@ -64,21 +64,43 @@ function App() {
     const amFingerprint = params.get('am_fingerprint')
     const maxAge = 60 * 60 * 24 * 30 // 30 days
 
-    // Clear any old duplicate cookies first
-    document.cookie = 'am_id=; path=/; max-age=0'
-    document.cookie = 'am_fingerprint=; path=/; max-age=0'
+    // Force-delete all cookies matching these names across all domains/paths
+    function nukeAndSetCookie(name, value) {
+      const hostname = window.location.hostname
+      const parts = hostname.split('.')
+      const domains = ['', hostname]
+      for (let i = 1; i < parts.length; i++) {
+        domains.push('.' + parts.slice(i - 1).join('.'))
+        domains.push(parts.slice(i - 1).join('.'))
+      }
+      const paths = ['/', '', window.location.pathname]
+      domains.forEach(d => {
+        paths.forEach(p => {
+          const domainStr = d ? `; domain=${d}` : ''
+          const pathStr = p ? `; path=${p}` : ''
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${domainStr}${pathStr}`
+          document.cookie = `${name}=; max-age=0${domainStr}${pathStr}`
+        })
+      })
+      if (value) {
+        document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`
+      }
+    }
 
     if (amId) {
       setAffiliateId(amId)
       localStorage.setItem('am_id', amId)
-      document.cookie = `am_id=${amId}; path=/; max-age=${maxAge}; SameSite=Lax`
+      nukeAndSetCookie('am_id', amId)
     } else {
       setAffiliateId('')
       localStorage.removeItem('am_id')
+      nukeAndSetCookie('am_id', null)
     }
 
     if (amFingerprint) {
-      document.cookie = `am_fingerprint=${amFingerprint}; path=/; max-age=${maxAge}; SameSite=Lax`
+      nukeAndSetCookie('am_fingerprint', amFingerprint)
+    } else {
+      nukeAndSetCookie('am_fingerprint', null)
     }
   }, [])
 
