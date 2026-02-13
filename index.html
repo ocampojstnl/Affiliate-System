@@ -5,29 +5,6 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>va-recruitment-tool</title>
-    <!-- GHL Affiliate Manager — must load before React to capture am_id from URL -->
-    <script>
-      (function() {
-        var t = document.createElement("script");
-        t.type = "text/javascript";
-        t.async = true;
-        t.src = "https://link.esystemsmanagement.com/js/am.js";
-        t.onload = t.onreadystatechange = function() {
-          var s = this.readyState;
-          if (!s || s === "complete" || s === "loaded") {
-            try {
-              affiliateManager.init(
-                "dXPpkZ3hX5PCKayZrLsI",
-                "https://backend.leadconnectorhq.com",
-                ".affiliate-system-eight.vercel.app"
-              );
-            } catch (e) {}
-          }
-        };
-        var e = document.getElementsByTagName("script")[0];
-        e.parentNode.insertBefore(t, e);
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>

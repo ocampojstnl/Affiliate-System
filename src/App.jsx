@@ -11,7 +11,7 @@ import { Users, RefreshCw, UserCheck, Info, ArrowLeft, Lock } from 'lucide-react
 
 const GHL_WEBHOOK_URL = '/api/ghl-webhook'
 
-// Read GHL tracking cookies set by am.js
+// Read tracking cookies
 function getCookie(name) {
   const value = `; ${document.cookie}`
   const parts = value.split(`; ${name}=`)
@@ -57,17 +57,24 @@ function App() {
   // Toast state
   const [toast, setToast] = useState({ open: false, title: '', description: '', variant: 'default' })
 
-  // Capture affiliate ID from URL on load
+  // Capture affiliate tracking params from URL and set as cookies (30-day expiry)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const amId = params.get('am_id')
+    const amFingerprint = params.get('am_fingerprint')
+    const maxAge = 60 * 60 * 24 * 30 // 30 days
+
     if (amId) {
       setAffiliateId(amId)
       localStorage.setItem('am_id', amId)
+      document.cookie = `am_id=${amId}; path=/; max-age=${maxAge}; SameSite=Lax`
     } else {
-      // No am_id in URL = direct visit, no affiliate
       setAffiliateId('')
       localStorage.removeItem('am_id')
+    }
+
+    if (amFingerprint) {
+      document.cookie = `am_fingerprint=${amFingerprint}; path=/; max-age=${maxAge}; SameSite=Lax`
     }
   }, [])
 
